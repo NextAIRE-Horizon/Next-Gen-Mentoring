@@ -1,0 +1,894 @@
+{
+  "name": "Daily Open-Meteo air alert",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## What this does\n\nFirst the canvas collects air-quality numbers from a service (Get CAMS air, Get forecast) and official weather warnings for the country (Get official alerts, Compact alerts). Then the agent adds situational intelligence: your place, setting, preconditions, a news check, and a web check.\n\nOpen-Meteo / CAMS is the feed here (no API key).\nhttps://air-quality-api.open-meteo.com/\n\nYou could swap it for another outdoor API, or add indoor readings from a sensor API you already have. The agent's job stays the same: interpret the data you collected in the context you configured. Do not invent a sensor that is not in the payload.\n\nCAMS figures are modelled outdoor air, not a street station.\nDomain auto: CAMS Europe in Europe, CAMS global elsewhere.\nPollen is a Europe-only CAMS field; elsewhere it is null.\n\nShape from Ange Russell, n8n template 3699:\nhttps://n8n.io/workflows/3699-daily-personalized-air-and-pollen-health-alerts-with-ambee-api-and-ai-via-email/",
+        "height": 500,
+        "width": 440
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "id": "note-credit",
+      "name": "Sticky Note",
+      "position": [
+        -816,
+        -368
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Set Place\n\nDefault: Seville, Spain. Change name / country / lat / lon.\n\nExample (Seville):\n- name: Seville\n- country: Spain\n- lat: 37.38283\n- lon: -5.97317\n\nCountry is required so news search does not hit a namesake city, and so Get official alerts can pick the Meteoalarm feed (Spain to spain).\nIf you change the place, set the same timezone on Set Date (default Europe/Madrid).\nPollen 0 is a real reading. null means CAMS does not publish pollen there.",
+        "height": 320,
+        "width": 360,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "id": "note-place",
+      "name": "Sticky Note1",
+      "position": [
+        0,
+        272
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Credentials\n\n1. OpenRouter Chat Model: same key as exercise 2. JSON default nvidia/nemotron-3.5-lightning:free. If the key has credit, switch to anthropic/claude-sonnet-5, Test workflow, then switch back to the free slug. Same numbers, different note; that comparison is the exercise. Free models can take several minutes or time out.\n2. Gmail: your address in sendTo\n3. Telegram (optional): bot token from BotFather, chat ID from userinfobot. YOUR_CHAT_ID is a placeholder. Chat does not send Gmail or Telegram.\n4. Search news and Search web weather: Header Auth named Tavily (Authorization: Bearer plus a key from https://app.tavily.com)\n5. Open Chat in the editor to talk; the schedule still sends mail and Telegram.\n6. Run the schedule once by hand, then turn on\n\nBoth searches are HTTP Request Tool on the agent, not the community Tavily node (Cloud cannot load community nodes as tools).\nSearch web weather is Weather in place, country? (advanced, today). Tools add situational context. They do not replace the collected numbers.\nMeteoalarm needs no key. If a tool fails, the mail still sends and should say unavailable for that line.\nFill weather copies Open-Meteo numbers only if no Weather header is present (a rain emoji already counts), appends the Note if skipped, and rewrites Change this if when that threshold is already true today.",
+        "height": 520,
+        "width": 460,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "id": "note-occupant",
+      "name": "Sticky Note2",
+      "position": [
+        -816,
+        160
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "position": [
+        -320,
+        0
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "place-name",
+              "name": "name",
+              "type": "string",
+              "value": "Seville"
+            },
+            {
+              "id": "place-country",
+              "name": "country",
+              "type": "string",
+              "value": "Spain"
+            },
+            {
+              "id": "place-lat",
+              "name": "lat",
+              "type": "string",
+              "value": "37.38283"
+            },
+            {
+              "id": "place-lon",
+              "name": "lon",
+              "type": "string",
+              "value": "-5.97317"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "id": "set-place",
+      "name": "Set Place",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "occ-setting",
+              "name": "setting",
+              "type": "string",
+              "value": "classroom"
+            },
+            {
+              "id": "occ-notes",
+              "name": "notes",
+              "type": "string",
+              "value": "No indoor sensor."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "id": "set-occupant",
+      "name": "Set Occupant",
+      "position": [
+        240,
+        0
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "url": "https://air-quality-api.open-meteo.com/v1/air-quality",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "={{ $('Set Place').item.json.lat }}"
+            },
+            {
+              "name": "longitude",
+              "value": "={{ $('Set Place').item.json.lon }}"
+            },
+            {
+              "name": "current",
+              "value": "european_aqi,pm2_5,pm10,nitrogen_dioxide,ozone,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen"
+            },
+            {
+              "name": "timezone",
+              "value": "auto"
+            },
+            {
+              "name": "domains",
+              "value": "auto"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "waitBetweenTries": 2000,
+      "type": "n8n-nodes-base.httpRequest",
+      "id": "get-air",
+      "maxTries": 3,
+      "name": "Get CAMS air",
+      "retryOnFail": true,
+      "position": [
+        720,
+        0
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "={{ $('Set Place').item.json.lat }}"
+            },
+            {
+              "name": "longitude",
+              "value": "={{ $('Set Place').item.json.lon }}"
+            },
+            {
+              "name": "current",
+              "value": "temperature_2m,relative_humidity_2m,wind_speed_10m"
+            },
+            {
+              "name": "daily",
+              "value": "temperature_2m_max,temperature_2m_min,precipitation_sum"
+            },
+            {
+              "name": "forecast_days",
+              "value": "1"
+            },
+            {
+              "name": "timezone",
+              "value": "auto"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "waitBetweenTries": 2000,
+      "type": "n8n-nodes-base.httpRequest",
+      "id": "get-forecast",
+      "maxTries": 3,
+      "name": "Get forecast",
+      "retryOnFail": true,
+      "position": [
+        960,
+        0
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('When chat message received').isExecuted ? $('When chat message received').item.json.chatInput : 'Write the full daily note now, every section, ending with the Note. Do not use Think. Call each search tool once. Never return an empty string.' }}",
+        "options": {
+          "systemMessage": "=You are a kind assistant. Your main job is situational intelligence, not a dump of numbers. This workflow collected air-quality readings from a service (here Open-Meteo / CAMS; another outdoor API or indoor sensor readings the user already has could sit in the same place). It also collected official weather warnings for the country from Meteoalarm (European national CAP alerts). That is collection, like CAMS, not a Tavily tool. You also have the user's place, setting, and preconditions. Use your tools to situate those readings in this week and this place, then write a short daily note a parent can act on.\n{{ $('When chat message received').isExecuted ? 'A person is chatting. Answer their question using the data and tools. Use the same sectioned shape as the daily note.' : 'This run is a scheduled job: there is nobody to ask, so do not pause. Do not use the Think tool. Call Search news once and Search web weather once, then write the full note, including the Note at the end. Never return an empty string. If a tool fails, still write the note and say no useful news or web check.' }}\nOnly use the data, profile, and tool results. Do not invent an indoor CO2 or PM reading. Do not invent a calendar date. Use the date from Set Date below, not a date from training data. CAMS / Open-Meteo is modelled outdoor air, not a station in the street. The disclaimer at the end already says this; do not lecture it again in Outdoor air. Do not draw a smoke plume. A pollen value of 0 is a real reading (none or very low). Only say pollen is unavailable if a field is null or missing. Do not name products. Write plain ASCII punctuation (hyphen -, not an em dash).\n\nDate (Set Date, {{ $('Set Date').item.json.timezone }}):\n- today: {{ $('Set Date').item.json.today }}\n- todayHuman: {{ $('Set Date').item.json.todayHuman }}\n- nowLocal: {{ $('Set Date').item.json.nowLocal }}\n\n<environmental_data>\nLocation: {{ $('Set Place').item.json.name }}, {{ $('Set Place').item.json.country }} ({{ $('Set Place').item.json.lat }}, {{ $('Set Place').item.json.lon }})\n\nAir (Open-Meteo / CAMS, current):\n- european_aqi: {{ $('Get CAMS air').item.json.current.european_aqi }}\n- pm2_5: {{ $('Get CAMS air').item.json.current.pm2_5 }} ug/m3\n- pm10: {{ $('Get CAMS air').item.json.current.pm10 }} ug/m3\n- no2: {{ $('Get CAMS air').item.json.current.nitrogen_dioxide }} ug/m3\n- o3: {{ $('Get CAMS air').item.json.current.ozone }} ug/m3\n- alder_pollen: {{ $('Get CAMS air').item.json.current.alder_pollen }}\n- birch_pollen: {{ $('Get CAMS air').item.json.current.birch_pollen }}\n- grass_pollen: {{ $('Get CAMS air').item.json.current.grass_pollen }}\n- mugwort_pollen: {{ $('Get CAMS air').item.json.current.mugwort_pollen }}\n- olive_pollen: {{ $('Get CAMS air').item.json.current.olive_pollen }}\n- ragweed_pollen: {{ $('Get CAMS air').item.json.current.ragweed_pollen }}\n\nHeat (Open-Meteo forecast):\n- now: {{ $('Get forecast').item.json.current.temperature_2m }} C, humidity {{ $('Get forecast').item.json.current.relative_humidity_2m }} %, wind {{ $('Get forecast').item.json.current.wind_speed_10m }} km/h\n- today's max: {{ $('Get forecast').item.json.daily.temperature_2m_max[0] }} C\n- today's min: {{ $('Get forecast').item.json.daily.temperature_2m_min[0] }} C\n- precipitation: {{ $('Get forecast').item.json.daily.precipitation_sum[0] }} mm\n\nOfficial warnings (Meteoalarm, collected, not a tool):\n{{ $('Compact alerts').item.json.summary }}\n</environmental_data>\n\n<web>\nYou have two Tavily tools. On a scheduled run, call each once after you read the numbers. Do not skip them. Do not treat a news headline as an official warning; official warnings are the Meteoalarm block above.\nSearch news: one query for situational context this week (alerts, dust, smoke, local outdoor life). Always include place and country. Prefer the local language. Do not default to wildfire or heatwave if the numbers do not point there.\nSearch web weather: already pinned as Weather in place, country. It is not the news line. Use it to contrast today's web weather, haze, or air pages with CAMS / Open-Meteo. A haze or air-quality page for this place counts. Do not replace CAMS or Open-Meteo numbers with a web number. Do not take pollen-tomorrow from the web.\nIf a tool fails or returns nothing useful for this place today, write unavailable on that line. Do not invent events or concentrations.\n</web>\n\n<user_profile>\nSetting: {{ $('Set Occupant').item.json.setting }}\nNotes: {{ $('Set Occupant').item.json.notes }}\n</user_profile>\n\n<preconditions>\n{{ $('Set Preconditions').item.json.preconditions }}\nTreat these as user-stated notes, not a diagnosis. Do not invent a condition. Adapt what this means and the open / close / filter / stay call to them (asthma, a named pollen, blood pressure, heat sensitivity, etc.). If the field is none or empty, do not assume illness.\n</preconditions>\n\nWrite in this shape for chat and for mail. Full sentences (not a list of numbers). Plain ASCII punctuation (hyphen -). A parent should be able to read every block aloud. Compact layout: emoji header, then its content on the next line with no blank line in between. One blank line between sections only. Do not break a sentence across lines. Do not pad lines with trailing spaces.\n\nUse exactly these headers, in this order:\n📍 Date and place\nweekday date. Next line: place, country (lat, lon).\n\n🌬️ Outdoor air\nTwo or three sentences. Name the source (CAMS via Open-Meteo). Give AQI, PM2.5, PM10, NO2 and O3 with units ug/m3, each in the sentence, not as a comma dump.\n\n☀️ Weather\nRequired. Never skip this block. Two sentences: what it is now (temperature, humidity, wind, rain), then today's high and low.\n\n⚠️ Official alert\nRequired. Never skip this block. One or two sentences. Name Meteoalarm. If Compact alerts says the feed is unavailable or that Meteoalarm does not cover this country, write unavailable. Do not turn that into no warning today. If it says no warning named for this place, say that. If there is a country sample that is not local, say none for this place, then mention the country sample without treating it as a local warning. Do not invent a warning. A severe or extreme official warning can support stay or close; it does not replace CAMS numbers.\n\n🌾 Pollen\nIf values exist, write them in grains/m3 (not ug/m3) in one or two sentences. 0 is a real reading. Do not forecast pollen for tomorrow. If fields are null: Pollen is unavailable here because CAMS does not publish pollen outside Europe.\n\n👉 What this means\n3-5 bullets, each a full sentence, using the preconditions when they matter. Match the call. If the call is stay or close, do not suggest outdoor play.\n\n📰 News\nOne or two sentences plus URL only if the page is clearly this place and this country this week (not weatherapi.com, not a namesake city). Else: No useful local news turned up this week.\n\n🔎 Web check\nOne or two sentences. Say if the page agrees or disagrees with CAMS, plus URL. A haze or air page for this place this week can agree even if it is not a weather forecast. If it disagrees, keep CAMS as the number. Ignore weatherapi.com, a namesake city, or a different day. If nothing useful: No independent web check turned up today.\n\n✅ What to do (use this exact header, not another emoji)\nLine 1: Call: then exactly one word (open, close, filter, or stay).\nLine 2: one plain sentence a parent could read aloud (what to do today and why).\nLine 3: Change this if: then the threshold in a full sentence. That condition must not already be true today. Read today's european_aqi and pm2_5 from the data above. Do not paste a WHO or EU guideline (15, 25, 35, 50 ug/m3) as a change trigger if today's reading is already past it. If the call is stay or close, Change this if is relief (air improves, rain, official all-clear). If the call is open or filter, it is a worsening still above today's numbers.\nIf AQI is about 100 or higher, or PM2.5 is very high, the call is stay (keep people indoors). close and filter can be named in the sentence, but the call word is stay. Do not pick filter or open on a haze day. News that hotspots fell does not override today's CAMS numbers. A severe or extreme Meteoalarm warning can support stay or close; it still does not replace CAMS numbers.\nDo not list all four call words. Do not write Tip. Do not jam the call and the threshold onto one line. Do not omit any header.\n\nℹ️ Note\nCopy the next three sentences verbatim. Do not rewrite them.\nThis is not a medical diagnosis. Outdoor figures are modelled (CAMS via Open-Meteo), not a street station. Official weather warnings come from Meteoalarm when listed above; check your national meteorological service, and talk to a doctor if you or anyone in your care feels unwell.\n\nOutput only the note. Do not add a footer after the Note.",
+          "maxIterations": 6
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "id": "ai-agent",
+      "name": "AI Agent",
+      "position": [
+        1400,
+        0
+      ],
+      "typeVersion": 3.1
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "id": "think",
+      "name": "Think",
+      "position": [
+        1072,
+        240
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3.5-lightning:free",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "id": "openrouter",
+      "name": "OpenRouter Chat Model",
+      "position": [
+        912,
+        240
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "date-today",
+              "name": "today",
+              "type": "string",
+              "value": "={{ $now.setZone('Europe/Madrid').toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "id": "date-human",
+              "name": "todayHuman",
+              "type": "string",
+              "value": "={{ $now.setZone('Europe/Madrid').toFormat('cccc d LLLL yyyy') }}"
+            },
+            {
+              "id": "date-now",
+              "name": "nowLocal",
+              "type": "string",
+              "value": "={{ $now.setZone('Europe/Madrid').toISO() }}"
+            },
+            {
+              "id": "date-tz",
+              "name": "timezone",
+              "type": "string",
+              "value": "Europe/Madrid"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "id": "set-date",
+      "name": "Set Date",
+      "position": [
+        560,
+        0
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "={{ $('Set Place').item.json.name }}, {{ $('Set Place').item.json.country }} outdoor air {{ $('Set Date').item.json.today }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        },
+        "emailType": "html"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "id": "gmail",
+      "name": "Gmail",
+      "position": [
+        2128,
+        160
+      ],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search the open web for situational outdoor-air context around the place (dust, heat, smoke, pollen, official alerts, local outdoor life). The query already includes place and country. Add short extra terms only. Call once this run. Not for today's temperature or AQI numbers.",
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {{ JSON.stringify($('Set Place').item.json.name + ', ' + $('Set Place').item.json.country + ' ' + $fromAI('Query', 'Short extra terms for outdoor-air situational context this week. Prefer the local language. Do not name another country or a namesake city.', 'string')) }},\n  \"max_results\": 3,\n  \"search_depth\": \"basic\",\n  \"topic\": \"general\",\n  \"time_range\": \"week\",\n  \"include_answer\": false,\n  \"exclude_domains\": [\"weatherapi.com\", \"wunderground.com\", \"facebook.com\", \"instagram.com\"]\n}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "id": "search-news",
+      "name": "Search news",
+      "position": [
+        1232,
+        240
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "id": "chat-trigger",
+      "name": "When chat message received",
+      "position": [
+        -320,
+        224
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "from-chat",
+              "leftValue": "={{ $('When chat message received').isExecuted }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "id": "from-chat",
+      "name": "From chat?",
+      "position": [
+        1640,
+        0
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "pre-text",
+              "name": "preconditions",
+              "type": "string",
+              "value": "Some pupils: grass pollen sensitivity. No asthma or blood-pressure notes."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "id": "set-preconditions",
+      "name": "Set Preconditions",
+      "position": [
+        400,
+        0
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "content": "## Set Preconditions\n\nThis is the user's situation, not a diagnosis. The agent must read the collected air numbers through this list (asthma, a named pollen, blood pressure, heat, haze sensitivity). That is the situational layer.\n\nEdit this list. Write none if you have nothing to add.\nThe agent must not invent a condition.",
+        "height": 280,
+        "width": 360,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "id": "note-preconditions",
+      "name": "Sticky Note3",
+      "position": [
+        400,
+        272
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "toolDescription": "Web weather and air-quality pages for this place today (not news). Query is already pinned as Weather in place, country. Call once. Do not use this for headlines.",
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": {{ JSON.stringify('Weather in ' + $('Set Place').item.json.name + ', ' + $('Set Place').item.json.country + '?') }},\n  \"max_results\": 1,\n  \"search_depth\": \"advanced\",\n  \"topic\": \"general\",\n  \"time_range\": \"day\",\n  \"include_answer\": false,\n  \"exclude_domains\": [\"weatherapi.com\", \"wunderground.com\", \"facebook.com\", \"instagram.com\"]\n}",
+        "options": {
+          "timeout": 25000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "id": "search-web-weather",
+      "name": "Search web weather",
+      "position": [
+        1392,
+        240
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "has-note",
+              "leftValue": "={{ $json.output }}",
+              "operator": {
+                "operation": "notEmpty",
+                "singleValue": true,
+                "type": "string"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "id": "has-note",
+      "name": "Has note?",
+      "position": [
+        1888,
+        160
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst text = String(item.output || '');\nconst isStruct = (line) => /^(📍|🌬️|☀️|🌦️|🌦|⛅|🌤️|⛈️|🌧️|🌧|⚠️|⚠|🌾|👉|📰|🔎|✅|ℹ️|📋|- |Call:|Change this if|https?:\\/\\/)/.test(line);\nconst lines = text.replace(/\\r\\n/g, '\\n').split('\\n');\nconst out = [];\nfor (const raw of lines) {\n  const line = raw.replace(/[ \\t]+$/g, '');\n  if (line === '') {\n    if (out.length === 0 || out[out.length - 1] !== '') out.push('');\n    continue;\n  }\n  if (!isStruct(line) && out.length && out[out.length - 1] !== '' && !isStruct(out[out.length - 1])) {\n    out[out.length - 1] += ' ' + line.trim();\n  } else {\n    out.push(line);\n  }\n}\nconst reflowed = out.join('\\n');\nconst escaped = reflowed.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst html = '<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#222\">' + escaped.replace(/\\n/g, '<br>') + '</div>';\nreturn [{ json: { ...item, output: reflowed, html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "id": "reflow-note",
+      "name": "Reflow note",
+      "position": [
+        2008,
+        160
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nlet text = String(item.output || item.text || '').trim();\nconst num = (v) => (Array.isArray(v) ? v[0] : v);\nconst asNum = (v) => {\n  const n = Number(num(v));\n  return Number.isFinite(n) ? n : null;\n};\nif (text && !/(☀️|☀|🌦️|🌦|⛅|🌤️|⛈️|🌧️|🌧)/.test(text)) {\n  const f = $('Get forecast').first().json || {};\n  const c = f.current || {};\n  const d = f.daily || {};\n  const block = '☀️ Weather\\nIt is ' + c.temperature_2m + ' C now, humidity ' + c.relative_humidity_2m + ' %, wind ' + c.wind_speed_10m + ' km/h, rain ' + num(d.precipitation_sum) + ' mm.\\nToday\\'s high is ' + num(d.temperature_2m_max) + ' C and the low is ' + num(d.temperature_2m_min) + ' C.';\n  if (/🌾/.test(text)) {\n    text = text.replace(/\\n+(?=🌾)/, '\\n\\n' + block + '\\n\\n');\n  } else if (/👉/.test(text)) {\n    text = text.replace(/\\n+(?=👉)/, '\\n\\n' + block + '\\n\\n');\n  } else {\n    text = text + '\\n\\n' + block;\n  }\n}\nif (text && !/⚠️|⚠/.test(text)) {\n  let first = 'Official Meteoalarm warnings were not available for this run.';\n  try {\n    const s = String((($('Compact alerts').first() || {}).json || {}).summary || '');\n    const line = s.split('\\n').filter(Boolean)[0];\n    if (line) first = line;\n  } catch (e) {}\n  const block = '⚠️ Official alert\\n' + first;\n  if (/🌾/.test(text)) {\n    text = text.replace(/\\n+(?=🌾)/, '\\n\\n' + block + '\\n\\n');\n  } else if (/👉/.test(text)) {\n    text = text.replace(/\\n+(?=👉)/, '\\n\\n' + block + '\\n\\n');\n  } else {\n    text = text + '\\n\\n' + block;\n  }\n}\nconst air = (($('Get CAMS air').first() || {}).json || {}).current || {};\nconst pm25 = asNum(air.pm2_5);\nconst aqi = asNum(air.european_aqi);\nconst call = (text.match(/Call:\\s*(open|close|filter|stay)/i) || [])[1] || '';\nconst alreadyTrue = (line) => {\n  const worse = /(exceeds|above|over|higher than|rises above)/i.test(line);\n  const better = /(falls below|drops below|below)/i.test(line);\n  const pm = line.match(/PM2\\.5[^\\d]{0,48}(\\d+(?:\\.\\d+)?)|(\\d+(?:\\.\\d+)?)[^\\d]{0,24}ug\\/m3/i);\n  const aq = line.match(/(?:European\\s+)?AQI[^\\d]{0,48}(\\d+(?:\\.\\d+)?)/i);\n  const pmVal = pm ? Number(pm[1] || pm[2]) : null;\n  const aqVal = aq ? Number(aq[1]) : null;\n  let hit = false;\n  if (pm25 != null && pmVal != null) {\n    if (worse && pm25 >= pmVal) hit = true;\n    if (better && pm25 <= pmVal) hit = true;\n  }\n  if (aqi != null && aqVal != null) {\n    if (worse && aqi >= aqVal) hit = true;\n    if (better && aqi <= aqVal) hit = true;\n  }\n  return hit;\n};\nconst fallback = () => {\n  if (/stay|close/i.test(call)) {\n    return 'Change this if: modelled PM2.5 falls below 35 ug/m3 and European AQI falls below 50, or a local official service says outdoor air has cleared.';\n  }\n  const nextPm = pm25 == null ? 35 : Math.max(35, Math.ceil(pm25) + 15);\n  const nextAqi = aqi == null ? 80 : Math.max(80, Math.ceil(aqi / 10) * 10 + 20);\n  return 'Change this if: European AQI rises above ' + nextAqi + ' or PM2.5 exceeds ' + nextPm + ' ug/m3.';\n};\ntext = text.replace(/^Change this if:.+$/im, (line) => (alreadyTrue(line) ? fallback() : line));\nconst NOTE = 'ℹ️ Note\\nThis is not a medical diagnosis. Outdoor figures are modelled (CAMS via Open-Meteo), not a street station. Official weather warnings come from Meteoalarm when listed above; check your national meteorological service, and talk to a doctor if you or anyone in your care feels unwell.';\nif (text && !/ℹ️|ℹ/.test(text)) {\n  text = text.replace(/\\s*$/, '') + '\\n\\n' + NOTE;\n}\nreturn [{ json: { ...item, output: text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "id": "fill-weather",
+      "name": "Fill weather",
+      "position": [
+        1768,
+        160
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHAT_ID",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "onError": "continueRegularOutput",
+      "id": "telegram",
+      "name": "Telegram",
+      "position": [
+        2128,
+        368
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "content": "## Set Occupant\n\nWho the note is for (classroom, home) and any notes you type (for example no indoor sensor).\n\nIndoor CO2 or PM only if you add a sensor API you already have. The agent must not invent indoor readings.",
+        "height": 220,
+        "width": 300,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "id": "note-occupant-help",
+      "name": "Sticky Note4",
+      "position": [
+        240,
+        -288
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Set Date\n\nTimezone for \"today\". Default Europe/Madrid.\n\nIf you move Set Place, change this timezone too. The model must not invent the calendar day.",
+        "height": 220,
+        "width": 280,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "id": "note-date",
+      "name": "Sticky Note5",
+      "position": [
+        560,
+        272
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Gmail and Telegram\n\nThe schedule sends the note to Gmail and, if you set a bot, Telegram.\n\nChat in the editor does not send Gmail or Telegram (From chat? skips them).\nTelegram: bot token plus chat ID.",
+        "height": 240,
+        "width": 380,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "id": "note-send",
+      "name": "Sticky Note6",
+      "position": [
+        1960,
+        512
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "color": 3,
+        "content": "## Executions\n\nAfter Test workflow, open Executions. Click the run.\n\nOpen Get CAMS air (the collected numbers), Compact alerts (official warnings), then AI Agent (the note and any tool calls). Open Gmail or Telegram if they ran.\n\nThis host stores every run. You can see the data before the prose. Run once on the free model and once on a paid Sonnet with the same profile: Executions is how you compare them.",
+        "height": 240,
+        "width": 380
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "id": "note-executions",
+      "name": "Sticky Note7",
+      "position": [
+        1380,
+        -300
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-{{ $('Set Place').item.json.country.toString().trim().toLowerCase().replace(/\\s+/g, '-') }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "onError": "continueRegularOutput",
+      "id": "get-official-alerts",
+      "name": "Get official alerts",
+      "position": [
+        1088,
+        0
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const place = $('Set Place').first().json || {};\n  const name = String(place.name || '').trim();\n  const country = String(place.country || '').trim();\n  const item = $input.first().json || {};\n  let xml = String(item.data || item.body || '');\n  if (!xml.includes('<feed') && !xml.includes('<entry') && item && typeof item === 'object') {\n    for (const v of Object.values(item)) {\n      if (typeof v === 'string' && (v.includes('<feed') || v.includes('<entry'))) { xml = v; break; }\n    }\n  }\n  const raw = country.toLowerCase();\n  const aliases = { uk: 'united-kingdom', 'united kingdom': 'united-kingdom', 'great britain': 'united-kingdom', 'czech republic': 'czechia', 'the netherlands': 'netherlands', usa: '', 'united states': '' };\n  const slug = Object.prototype.hasOwnProperty.call(aliases, raw) ? aliases[raw] : raw.replace(/\\s+/g, '-');\n  if (!xml.includes('<entry') && !xml.includes('<feed')) {\n    const summary = slug\n      ? 'Meteoalarm returned no usable feed for ' + country + '. Treat official alerts as unavailable. Do not invent a warning.'\n      : 'Meteoalarm does not cover ' + (country || 'this country') + '. Official European warnings are unavailable here.';\n    return [{ json: { summary, localCount: 0, countryCount: 0 } }];\n  }\n  const tag = (block, names) => {\n    for (const n of names) {\n      const m = block.match(new RegExp('<(?:cap:)?' + n + '>([\\\\s\\\\S]*?)</(?:cap:)?' + n + '>', 'i'));\n      if (m) return m[1].replace(/<[^>]+>/g, '').trim();\n    }\n    return '';\n  };\n  const now = Date.now();\n  const entries = [];\n  for (const rawEntry of xml.split(/<entry[\\\\s>]/i).slice(1)) {\n    const block = '<entry>' + rawEntry;\n    const expires = tag(block, ['expires']);\n    const expMs = Date.parse(expires);\n    if (Number.isFinite(expMs) && expMs < now) continue;\n    const title = tag(block, ['title']);\n    const area = tag(block, ['areaDesc']);\n    const event = tag(block, ['event']);\n    const severity = tag(block, ['severity']);\n    if (!title && !event) continue;\n    entries.push({ title, area, event, severity, expires });\n  }\n  const placeAliases = { seville: ['seville', 'sevilla'], sevilla: ['seville', 'sevilla'] };\n  const key = name.toLowerCase();\n  const tokens = (placeAliases[key] || [key]).concat(key.split(/\\s+/)).filter((t) => t.length >= 4);\n  const local = entries.filter((e) => {\n    const hay = (e.area + ' ' + e.title).toLowerCase();\n    return tokens.some((t) => hay.includes(t));\n  });\n  const pick = (local.length ? local : entries).slice(0, 6);\n  const line = (e) => [e.severity, e.event || e.title, e.area, e.expires ? ('until ' + e.expires) : ''].filter(Boolean).join(' | ');\n  let summary;\n  if (!entries.length) {\n    summary = 'No current Meteoalarm warning for ' + country + '. Say there is no official warning for this country today. Source: Meteoalarm.';\n  } else if (local.length) {\n    summary = 'Official Meteoalarm warnings that match ' + name + ', ' + country + ':\\n' + pick.map(line).join('\\n');\n  } else {\n    summary = 'No Meteoalarm warning named for ' + name + '. ' + country + ' currently has ' + entries.length + ' warning(s). Country sample (not local):\\n' + pick.map(line).join('\\n');\n  }\n  return [{ json: { summary, localCount: local.length, countryCount: entries.length } }];\n} catch (e) {\n  return [{ json: { summary: 'Official Meteoalarm warnings were unavailable this run. Do not invent a warning.', localCount: 0, countryCount: 0 } }];\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "onError": "continueRegularOutput",
+      "id": "compact-alerts",
+      "name": "Compact alerts",
+      "position": [
+        1224,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "width": 360,
+        "height": 280,
+        "color": 4,
+        "content": "## Official alerts\n\nMeteoalarm Atom for the country in Set Place (Spain to spain, Germany to germany). No API key.\nhttps://feeds.meteoalarm.org/\n\nThis is collection, like CAMS, not a Tavily tool. Compact alerts keeps a short list so the model is not fed the whole country feed.\n\nEurope and a few neighbours. Outside that coverage the GET fails and the note should say unavailable. Do not invent a warning."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "id": "note-official",
+      "name": "Sticky Note8",
+      "position": [
+        960,
+        272
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Get CAMS air": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Get forecast",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "index": 0,
+            "node": "AI Agent",
+            "type": "ai_languageModel"
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Set Place",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Set Place": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Set Occupant",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "index": 0,
+            "node": "AI Agent",
+            "type": "ai_tool"
+          }
+        ]
+      ]
+    },
+    "Set Date": {
+      "main": [
+        [
+          {
+            "node": "Get CAMS air",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search news": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Set Place",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "From chat?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Occupant": {
+      "main": [
+        [
+          {
+            "node": "Set Preconditions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Preconditions": {
+      "main": [
+        [
+          {
+            "node": "Set Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search web weather": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reflow note": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fill weather": {
+      "main": [
+        [
+          {
+            "node": "Has note?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has note?": {
+      "main": [
+        [
+          {
+            "node": "Reflow note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "From chat?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Fill weather",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get forecast": {
+      "main": [
+        [
+          {
+            "node": "Get official alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get official alerts": {
+      "main": [
+        [
+          {
+            "node": "Compact alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compact alerts": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
