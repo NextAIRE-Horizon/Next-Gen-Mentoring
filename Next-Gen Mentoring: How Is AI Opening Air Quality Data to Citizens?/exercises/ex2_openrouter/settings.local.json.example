@@ -1,0 +1,9 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+    "ANTHROPIC_AUTH_TOKEN": "sk-or-v1-REPLACE_WITH_YOUR_OPENROUTER_KEY",
+    "ANTHROPIC_API_KEY": "",
+    "ANTHROPIC_MODEL": "nvidia/nemotron-3.5-lightning:free",
+    "ANTHROPIC_SMALL_FAST_MODEL": "nvidia/nemotron-3.5-lightning:free"
+  }
+}
