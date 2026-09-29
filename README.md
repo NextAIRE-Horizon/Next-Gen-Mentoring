@@ -103,4 +103,33 @@ You can access the full recording of the workshop on YouTube via the link below:
 
 ---
 
+# 5. Next-Gen Mentoring: How Is AI Opening Air Quality Data to Citizens?
+
+This workshop focuses on the integration of artificial intelligence (AI), Model Context Protocols (MCPs), and multi-agent workflows to translate complex environmental readings into actionable citizen intelligence. Mentors and researchers are introduced to practical methods for converting raw sensor data into plain-language guidance, linking indoor and outdoor environmental context, and deploying automated tools to empower citizens and mentees alike.
+
+**Presenter:**  
+Miguel Escribano (inBiot)
+
+**Key Topics Covered:**
+* **Sensor Data vs. Actionable Intelligence:** Moving beyond displaying raw pollutant concentrations (e.g., CO2 or PM2.5) toward generating direct, plain-language recommendations for non-experts.
+* **Situational Environmental Intelligence:** Combining indoor sensor metrics with real-time outdoor weather and air quality context to guide everyday decisions (such as optimal window opening vs. mechanical ventilation).
+* **Model Context Protocol (MCP) & Data Connectors:** Leveraging open standardized protocols to securely feed live sensor streams and environmental databases directly into AI tools (e.g., Claude, ChatGPT, local LLMs).
+* **Domain Knowledge Grounding:** Incorporating established health and environmental standards (such as WHO, WELL, or GOASQ) into AI reasoning to ensure reliable, non-hallucinated guidance.
+* **Autonomous AI Agents & Workflows:** Building 24/7 monitoring systems and agent workflows (e.g., Anne, Hermes) to continuously evaluate environmental trends and trigger automated alerts via platforms like N8N.
+* **Data Governance & AI Compliance:** Navigating privacy requirements and data anonymization when handling indoor, facility, or personal environmental data under the EU AI Act.
+
+**Presentation Materials:**  
+The presentation slides used during the session are available here:  
+👉 [NextAIRE AI & Air Quality Workshop (Miguel Escribano) - Presentation Slides](https://github.com/NextAIRE-Horizon/Next-Gen-Mentoring/blob/main/Next-Gen%20Mentoring%20-%20How%20Is%20AI%20Opening%20Air%20Quality%20Data%20to%20Citizens/inBiot_NextAIRE_2026-09-22.pdf)
+
+**Watch the Session:**  
+You can access the full recording of the workshop on YouTube via the link below:  
+👉 [Next-Gen Mentoring: How Is AI Opening Air Quality Data to Citizens? - Workshop Recording]() - TODO
+
+**Hands-on Exercises & Code Templates:**  
+Access the practical exercises, MCP server templates, and N8N workflow examples here:  
+👉 [NextAIRE AI Workshop Exercises & Templates](https://github.com/NextAIRE-Horizon/Next-Gen-Mentoring/tree/main/Next-Gen%20Mentoring%20-%20How%20Is%20AI%20Opening%20Air%20Quality%20Data%20to%20Citizens/exercises)
+
+---
+
 *This project is part of our ongoing commitment to professional development and digital excellence in mentorship.*
