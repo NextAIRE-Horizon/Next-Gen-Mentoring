@@ -10,7 +10,7 @@ Welcome to the **Next-Gen Mentoring** repository. This initiative is dedicated t
 This workshop focuses on the practical application of AI and knowledge management tools in academia. Mentors are introduced to a curated set of resources designed to streamline literature search, organize research notes, and manage complex projects.
 
 **Presenter:**
-*  Mario Lovrić (InAntro)
+*  Mario Lovrić ([InAntro](https://inantro.hr/))
 
 **Key Topics Covered:**
 *   **Knowledge Management:** Using **Claude, Obsidian, and Notion** to build a "second brain."
@@ -33,7 +33,7 @@ You can access the full recording of the workshop on YouTube via the link below:
 This workshop explores the transition from academic research to entrepreneurship through the real-world case study of **MegaSense Oy**, an air quality start-up spun out from the **University of Helsinki**. It highlights how an interdisciplinary research collaboration between computer science and atmospheric science evolved into a deep-tech company.
 
 **Presenter:**
-*  Andrew Rebeiro-Hargrave (MegaSense Oy, University of Helsinki)
+*  Andrew Rebeiro-Hargrave ([MegaSense Oy](https://megasense.com/), University of Helsinki)
 
 **Key Topics Covered:**
 *   **Research Commercialisation:** Real-world insights into transitioning university research into a formal spin-out company.
@@ -54,8 +54,8 @@ You can access the full recording of the workshop on YouTube via the link below:
 This workshop focuses on the critical transition from academic research to market-ready innovation. Through expert guidance and real-world case studies, it provides researchers, supervisors, and mentors with a practical roadmap for identifying commercialisation pathways, developing value propositions, and achieving early market validation.
 
 **Presenters:** 
-*  Alexander Sirois (Unico)
-*  Andrew Rebeiro-Hargrave (MegaSense Oy, University of Helsinki)
+*  Alexander Sirois ([Unico](https://www.unicoanalytics.cz/about))
+*  Andrew Rebeiro-Hargrave ([MegaSense Oy](https://megasense.com/), University of Helsinki)
 
 
 **Key Topics Covered:**
@@ -81,7 +81,7 @@ You can access the full recording of the workshop on YouTube via the link below:
 This workshop focuses on the fundamentals of intellectual property (IP) and strategic intellectual asset management (IAM) within the academic mentoring process. Mentors are introduced to a broader concept of "intellectual assets," the critical timing of filing protections before public disclosure, and practical frameworks to identify, secure, and commercially deploy research outputs.
 
 **Presenter:**
-*  Ana Nikšić-Šarić (Terra Technopolis)
+*  Ana Nikšić-Šarić ([Terra Technopolis](https://tera.hr/))
 
 **Key Topics Covered:**
 *   **Intellectual Property (IP) vs. Intellectual Assets (IA):** Widening the definition of research value beyond formal IP (patents) to include data, software, algorithms, methodologies, and tacit know-how.
@@ -108,7 +108,7 @@ You can access the full recording of the workshop on YouTube via the link below:
 This workshop focuses on the integration of artificial intelligence (AI), Model Context Protocols (MCPs), and multi-agent workflows to translate complex environmental readings into actionable citizen intelligence. Mentors and researchers are introduced to practical methods for converting raw sensor data into plain-language guidance, linking indoor and outdoor environmental context, and deploying automated tools to empower citizens and mentees alike.
 
 **Presenter:**  
-Miguel Escribano (inBiot)
+*  Miguel Escribano ([inBiot](https://www.inbiotair.com/))
 
 **Key Topics Covered:**
 * **Sensor Data vs. Actionable Intelligence:** Moving beyond displaying raw pollutant concentrations (e.g., CO2 or PM2.5) toward generating direct, plain-language recommendations for non-experts.
