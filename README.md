@@ -124,7 +124,7 @@ The presentation slides used during the session are available here:
 
 **Watch the Session:**  
 You can access the full recording of the workshop on YouTube via the link below:  
-👉 [Next-Gen Mentoring: How Is AI Opening Air Quality Data to Citizens? - Workshop Recording]() - TODO
+👉 [Next-Gen Mentoring: How Is AI Opening Air Quality Data to Citizens? - Workshop Recording](https://www.youtube.com/watch?v=HHv5jDpUXto)
 
 **Hands-on Exercises & Code Templates:**  
 Access the practical exercises, MCP server templates, and N8N workflow examples here:  
