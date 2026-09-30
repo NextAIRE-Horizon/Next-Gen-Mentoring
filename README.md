@@ -103,7 +103,7 @@ You can access the full recording of the workshop on YouTube via the link below:
 
 ---
 
-# 5. Next-Gen Mentoring: How Is AI Opening Air Quality Data to Citizens?
+### 5. Next-Gen Mentoring: How Is AI Opening Air Quality Data to Citizens?
 
 This workshop focuses on the integration of artificial intelligence (AI), Model Context Protocols (MCPs), and multi-agent workflows to translate complex environmental readings into actionable citizen intelligence. Mentors and researchers are introduced to practical methods for converting raw sensor data into plain-language guidance, linking indoor and outdoor environmental context, and deploying automated tools to empower citizens and mentees alike.
 
